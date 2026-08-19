@@ -1,0 +1,189 @@
+:root {
+  --bg-color: #1e1e2f;
+  --panel-bg: #2a2a40;
+  --card-bg: #33334c;
+  --card-hover: #444466;
+  --text-color: #e0e0e0;
+  --accent-color: #4ade80;
+  --track-bg: #1a1a24;
+  --axis-color: #555577;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  padding: 20px;
+  margin: 0;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: var(--panel-bg);
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+h1, h2 { margin-top: 0; color: #fff; }
+
+.controls-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #444;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.control-group input {
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  background-color: #1a1a24;
+  color: #fff;
+}
+
+button {
+  background-color: var(--accent-color);
+  color: #111;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1rem;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+button:hover { opacity: 0.8; }
+
+/* 摺疊面板架構 */
+.accordion-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.accordion-header {
+  background-color: var(--card-bg);
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: var(--accent-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s;
+  border: 1px solid #444;
+}
+
+.accordion-header:hover {
+  background-color: var(--card-hover);
+}
+
+.accordion-content {
+  display: none; 
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 15px;
+  padding: 10px;
+  background-color: rgba(0,0,0,0.1);
+  border-radius: 8px;
+}
+
+.accordion-content.active {
+  display: grid;
+}
+
+/* 進階角色卡片設計 */
+.character-card {
+  background-color: var(--card-bg);
+  padding: 15px;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.character-card:hover { background-color: var(--card-hover); }
+
+/* Glowing effect for selected character cards */
+.character-card:has(> input[type="checkbox"]:checked) {
+  background-color: rgba(74, 222, 128, 0.08);
+  border: 2px solid var(--accent-color);
+  box-shadow: 0 0 15px rgba(74, 222, 128, 0.35);
+}
+
+.character-card > input[type="checkbox"] { 
+  display: none; 
+}
+
+.char-info { flex-grow: 1; display: flex; flex-direction: column; }
+.char-name { font-weight: bold; font-size: 1.05rem; color: #fff; }
+.char-outfit { font-size: 0.8rem; color: #aaa; margin-top: 2px; }
+.char-stats { font-size: 0.85rem; color: var(--accent-color); margin-top: 6px; }
+.char-bonus { font-size: 0.85rem; color: #ffb6c1; margin-top: 2px; }
+
+/* 運算結果與時間軸 */
+.result-section {
+  display: none;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #444;
+}
+
+.summary {
+  background: rgba(74, 222, 128, 0.1);
+  border-left: 4px solid var(--accent-color);
+  padding: 15px;
+  margin-bottom: 30px;
+  border-radius: 4px;
+  font-size: 1.1rem;
+}
+
+.timeline-wrapper { display: flex; flex-direction: column; }
+.track-row { display: flex; align-items: center; margin-bottom: 12px; }
+.track-char-info { width: 140px; flex-shrink: 0; font-weight: bold; font-size: 0.9rem; }
+.talent-badge {
+  font-size: 0.7rem; background-color: #fbbf24; color: #713f12;
+  padding: 2px 6px; border-radius: 12px; margin-left: 0px; font-weight: 800;
+}
+
+.track {
+  flex-grow: 1; height: 36px; background-color: var(--track-bg);
+  border-radius: 6px; position: relative; overflow: hidden;
+}
+
+.skill-bar {
+  position: absolute; height: 100%; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; color: rgba(0,0,0,0.7); font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3); cursor: crosshair;
+}
+.skill-bar:hover { filter: brightness(1.2); }
+
+.axis {
+  display: flex; position: relative; margin-left: 140px;
+  height: 40px; border-top: 2px solid var(--axis-color); margin-top: 10px;
+}
+.tick {
+  position: absolute; top: 8px; transform: translateX(-50%); font-size: 0.85rem; color: #aaa;
+}
+.tick::before {
+  content: ''; position: absolute; top: -10px; left: 50%;
+  width: 2px; height: 6px; background-color: var(--axis-color);
+}

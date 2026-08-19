@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HoloDreamTeam EV Optimization</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+  <h1>HoloDreamTeam Pro 期望值最佳化</h1>
+  
+  <div class="controls-section">
+    <div class="control-group">
+      <label for="songDuration">Song Duration (s)</label>
+      <input type="number" id="songDuration" value="120" min="30" max="600">
+    </div>
+    <div class="control-group">
+      <label for="talentPoints">CD Talent Points (+4% each)</label>
+      <input type="number" id="talentPoints" value="15" min="0" max="15">
+    </div>
+  </div>
+
+  <h2>Select Your Characters (5★ Only)</h2>
+  
+  <div class="filter-section" style="margin-bottom: 15px;">
+    <div class="selected-count" style="display: flex; justify-content: space-between; align-items: center; width: 100%; border: none; padding-top: 0; margin-top: 0;">
+      <div style="display: flex; gap: 10px;">
+        <button id="clearCharactersBtn" style="font-size: 0.85rem; padding: 5px 12px; background-color: transparent; border: 1px solid #ff7f50; color: #ff7f50; border-radius: 6px; cursor: pointer; transition: 0.2s;">
+          Unselect All Characters
+        </button>
+      </div>
+      <div>Selected: <span id="selectedCountDisplay">0</span> / 5</div>
+    </div>
+  </div>
+
+  <div id="accordionContainer" class="accordion-container">
+    <div style="padding: 20px; color: #aaa;">Loading database...</div>
+  </div>
+
+  <div style="display: flex; justify-content: flex-end; margin-top: 25px;">
+    <button id="calculateBtn">Calculate Best EV Team 🚀</button>
+  </div>
+
+  <div class="result-section" id="resultSection">
+    <h2>Optimization Results</h2>
+    <div id="summary-container" class="summary"></div>
+    <div class="timeline-wrapper" id="timeline-wrapper"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
