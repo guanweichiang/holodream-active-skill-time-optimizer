@@ -139,8 +139,8 @@ id,character,outfit,Rarity,Type,group,AP cooldown,AP duration,score_bonus,base_t
 138,Kazama Iroha,Blade Flash,5,Cute,holoX,30,11,90,high
 139,Ayunda Risu,Sylvan Mischief,5,Happy,ID Gen 1,34,15,75,high
 140,Moona Hoshinova,Lunar Songstress,5,Cute,ID Gen 1,30,11,90,high
-141,Airani Iofifteen,Sunlit Cosmos Palette,5,Pure,ID Gen 1,17,6,100,medium
-142,Kureiji Ollie,Eternal Z-Talker,5,Pure,ID Gen 2,25,10,90,medium
+141,Airani Iofifteen,Sunlit Cosmos Palette,5,Pure,ID Gen 1,17,6,100,mid
+142,Kureiji Ollie,Eternal Z-Talker,5,Pure,ID Gen 2,25,10,90,mid
 143,Anya Melfissa,Couch Patato Gamer,5,Cute,ID Gen 2,24,10,85,medium
 144,Pavolia Reine,Royal Peafowl Brew,5,Happy,ID Gen 2,29,10,100,high
 145,Vestia Zeta,Sunny Cat Syndicate,5,Happy,ID Gen 3,25,11,75,high
@@ -162,7 +162,7 @@ id,character,outfit,Rarity,Type,group,AP cooldown,AP duration,score_bonus,base_t
 161,Juufuutei Raden,Luminary of Arts,5,Happy,ReGLOSS,22,8,95,high
 162,Todoroki Hajime,Bancho's Soft Grace,5,Cute,ReGLOSS,26,9,100,high
 163,Oozora Subaru,Vibrant Sun Splash!,5,Pure,Gen 2,17,7,90,medium
-164,Shiranui Flare,Sparks at Sunset,5,Happy,Gen 3,33,11,105,high
+164,Shranui Flare,Sparks at Sunset,5,Happy,Gen 3,33,11,105,high
 165,Shirogane Neol,Serene Wave Knight,5,Cute,Gen 3 ,21,7,100,high
 166,Tsunomaki Watame,Flatie Float Time,5,Happy,Gen 4,35,12,100,high
 167,Otonose Kanade,Breezy Smile Chords,5,Happy,ReGLOSS,23,8,100,medium
@@ -173,3 +173,7 @@ id,character,outfit,Rarity,Type,group,AP cooldown,AP duration,score_bonus,base_t
 172,Kureiji Ollie,Crazy Summer Dive,5,Happy,ID Gen 2,19,7,90,high
 173,Mori Calliope,Beach Reaper's Spike,5,Cute,Myth,31,12,90,medium
 174,Ninomae Ina'nis,Tracing Tide Memories,5,Happy,Myth,24,10,85,medium
+175,Shirakami Fubuki,Twinkle on the Shore,5,Cute ,"Gen1, Gamers",35,13,95,medium
+176,Ookami Mio,Drowsy Wolf Heart,5,Pure,Gamers,23,8,100,medium
+177,Nekomata Okayu,Parasol Stray Cat,5,Happy,Gamers,28,10,95,high
+178,Inugami Korone,Jungle Fever Dance,5,Pure,Gamers,32,11,100,high
