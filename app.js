@@ -69,7 +69,6 @@ const resultSection = document.getElementById('resultSection');
 const selectedCountDisplay = document.getElementById('selectedCountDisplay');
 const clearCharactersBtn = document.getElementById('clearCharactersBtn');
 
-// --- 1. Auto-fetch CSV & Pre-process ---
 window.addEventListener('DOMContentLoaded', () => {
   fetch('character.csv') 
     .then(response => {
@@ -83,7 +82,6 @@ window.addEventListener('DOMContentLoaded', () => {
         skipEmptyLines: true,
         complete: function(results) {
           allCharactersData = results.data.filter(char => char.character && char['AP cooldown'] && char.Rarity === 5);
-          
           allCharactersData.forEach(char => {
             const rawRate = char.base_trigger_rate ? String(char.base_trigger_rate).trim() : 'Medium';
             char.display_rate = rawRate.charAt(0).toUpperCase() + rawRate.slice(1);
@@ -98,21 +96,11 @@ window.addEventListener('DOMContentLoaded', () => {
             let parsedScore = parseFloat(String(rawScore).replace('%', '').trim());
             char.score_bonus = isNaN(parsedScore) ? 100 : parsedScore;
           });
-
-          if (!accordionContainer) {
-             console.error("accordionContainer not found! Please update your index.html");
-             return;
-          }
-          renderAccordionList(allCharactersData);
+          if (accordionContainer) renderAccordionList(allCharactersData);
         }
       });
     })
-    .catch(error => {
-      if (accordionContainer) {
-        accordionContainer.innerHTML = `<div style="color: #ff6b6b; padding: 20px;">Failed to load database. Please ensure character.csv exists.</div>`;
-      }
-      console.error(error);
-    });
+    .catch(error => console.error(error));
 });
 
 clearCharactersBtn.addEventListener('click', () => {
@@ -121,11 +109,9 @@ clearCharactersBtn.addEventListener('click', () => {
   selectedCountDisplay.innerText = '0';
 });
 
-// --- 2. Render Accordion UI ---
 function renderAccordionList(characters) {
   accordionContainer.innerHTML = '';
   const grouped = {};
-  
   characters.forEach(char => {
     const groups = char.group ? String(char.group).split(',').map(g => g.trim()) : ['Other'];
     groups.forEach(g => {
@@ -147,23 +133,7 @@ function renderAccordionList(characters) {
     return iA - iB;
   });
 
-  const charRankList = [
-    "tokinosora", "robocosan", "azki", "sakuramiko", "hoshimachisuisei",
-    "akirosenthal", "akirosethal", "akaihaato", "shirakamifubuki", "natsuiromatsuri",
-    "nakiriayame", "yuzukichoco", "oozorasubaru",
-    "ookamimio", "nekomataokayu", "inugamikorone",
-    "usadapekora", "shiranuiflare", "shiroganenoel", "shiroganeneol", "houshoumarine",
-    "tsunomakiwatame", "tokoyamitowa", "himemoriluna",
-    "yukihanalamy", "momosuzunene", "shishirobotan", "omarupolka",
-    "la+darknesss", "takanelui", "hakuikoyori", "kazamairoha",
-    "ayundarisu", "moonahoshinova", "airaniiofifteen",
-    "kureijiollie", "anyamelfissa", "pavoliareine",
-    "vestiazeta", "kaelakovalskia", "kobokanaeru",
-    "moricalliope", "takanashikiara", "ninomaeinanis", "ninomaeina'nis",
-    "irys", "ourokronii", "hakosbaelz",
-    "shiorinovella", "kosekibijou", "nerissaravencroft", "fuwawaabyssgard", "mococoabyssgard",
-    "otonosekanade", "ichijouririka", "juufuuteiraden", "todorokihajime"
-  ];
+  const charRankList = Object.keys(characterColors).map(name => String(name).toLowerCase().replace(/[^a-z0-9+]/g, ''));
 
   function getCharRank(name) {
     const key = String(name).toLowerCase().replace(/[^a-z0-9+]/g, '');
@@ -214,7 +184,6 @@ function renderAccordionList(characters) {
           selectedIds.delete(char.id);
         }
         selectedCountDisplay.innerText = selectedIds.size;
-        
         document.querySelectorAll(`.character-card input[type="checkbox"][value="${char.id}"]`).forEach(cb => {
             cb.checked = e.target.checked;
         });
@@ -261,7 +230,6 @@ function renderAccordionList(characters) {
 
       content.appendChild(card);
     });
-
     accordionContainer.appendChild(header);
     accordionContainer.appendChild(content);
   });
@@ -301,7 +269,8 @@ function getCharacterIntervals(cooldown, duration, investedPoints, songDuration)
   return intervals;
 }
 
-function calculateExpectedScore(teamData, songDuration, triggerRateBuffs = {}) {
+// 【升級】：加入 assumePerfect 參數來計算理論最高分 (Ceiling)
+function calculateExpectedScore(teamData, songDuration, triggerRateBuffs = {}, assumePerfect = false) {
   const events = [];
   teamData.forEach(char => {
     char.intervals.forEach(interval => {
@@ -318,27 +287,24 @@ function calculateExpectedScore(teamData, songDuration, triggerRateBuffs = {}) {
 
   events.forEach(event => {
     const timeElapsed = event.time - prevTime;
-    
     if (activeChars.size > 0 && timeElapsed > 0) {
       const sortedActive = Array.from(activeChars).sort((a, b) => b.score_bonus - a.score_bonus);
       let expectedRateForSegment = 0;
       let currentFailProb = 1.0;
       
       for (const char of sortedActive) {
-        let finalProb = char.parsed_rate + (triggerRateBuffs[char.id] || 0);
+        // 如果開啟理論上限模式，強制 100% 發動機率
+        let finalProb = assumePerfect ? 1.0 : (char.parsed_rate + (triggerRateBuffs[char.id] || 0));
         finalProb = Math.min(1.0, finalProb); 
         expectedRateForSegment += currentFailProb * finalProb * char.score_bonus;
         currentFailProb *= (1 - finalProb);
       }
       totalExpectedScore += expectedRateForSegment * timeElapsed;
     }
-
     if (event.type === 'start') activeChars.add(event.char);
     else activeChars.delete(event.char);
-    
     prevTime = event.time;
   });
-
   return totalExpectedScore;
 }
 
@@ -350,31 +316,19 @@ function getCoverageSegments(teamData) {
       events.push({ time: interval[1], type: 'end', char: char });
     });
   });
-
   events.sort((a, b) => a.time !== b.time ? a.time - b.time : (a.type === 'end' ? -1 : 1));
-
   const segments = [];
   const activeChars = new Set();
   let prevTime = 0;
-
   events.forEach(event => {
     const timeElapsed = event.time - prevTime;
-    
     if (activeChars.size > 0 && timeElapsed > 0) {
       const sortedActive = Array.from(activeChars).sort((a, b) => b.score_bonus - a.score_bonus);
       const bestChar = sortedActive[0];
-      
-      segments.push({
-        start: prevTime,
-        end: event.time,
-        color: bestChar.color,
-        name: bestChar.name
-      });
+      segments.push({ start: prevTime, end: event.time, color: bestChar.color, name: bestChar.name });
     }
-
     if (event.type === 'start') activeChars.add(event.char);
     else activeChars.delete(event.char);
-    
     prevTime = event.time;
   });
 
@@ -395,8 +349,9 @@ function getCoverageSegments(teamData) {
   return mergedSegments;
 }
 
-function findBestEVTeam(memberPool, maxTalentPoints, songDuration) {
-  let bestResult = { expectedScore: 0, team: [] };
+// 【升級】：根據使用者的優化目標 (EV / Ceiling / Coverage) 挑選最佳解
+function findBestTeamByGoal(memberPool, maxTalentPoints, songDuration, optimizeGoal) {
+  let bestResult = { score: -1, ev: 0, ceiling: 0, coverage: 0, team: [] };
   const usableTalents = Math.min(maxTalentPoints, 15);
   const talentDistributions = getTalentDistributions(usableTalents, memberPool);
 
@@ -407,7 +362,6 @@ function findBestEVTeam(memberPool, maxTalentPoints, songDuration) {
       const investedPoints = distribution[index];
       const intervals = getCharacterIntervals(char['AP cooldown'], char['AP duration'], investedPoints, songDuration);
       
-      // 【更新重點】：優先讀取自定義顏色，若無填寫則使用預設陣列的顏色
       const customColor = characterColors[char.character];
       const assignedColor = (customColor && customColor.trim() !== "") ? customColor : timelineColors[index % timelineColors.length];
 
@@ -422,26 +376,40 @@ function findBestEVTeam(memberPool, maxTalentPoints, songDuration) {
       });
     });
 
-    const ev = calculateExpectedScore(currentTimelineData, songDuration, {});
+    const ev = calculateExpectedScore(currentTimelineData, songDuration, {}, false);
+    const ceiling = calculateExpectedScore(currentTimelineData, songDuration, {}, true);
     
-    if (ev > bestResult.expectedScore) {
-      bestResult = { expectedScore: ev, team: currentTimelineData };
+    const summarySegments = getCoverageSegments(currentTimelineData);
+    let coverage = 0;
+    summarySegments.forEach(seg => coverage += (seg.end - seg.start));
+
+    // 決定這次排程的分數 (Score)
+    let currentScore = 0;
+    if (optimizeGoal === 'ev') {
+      currentScore = ev;
+    } else if (optimizeGoal === 'ceiling') {
+      currentScore = ceiling;
+    } else if (optimizeGoal === 'coverage') {
+      // 若追求覆蓋率，則以秒數為主；加上微小的 EV 作為覆蓋率相同時的「同分比較條件」
+      currentScore = coverage + (ev / 100000); 
+    }
+    
+    if (currentScore > bestResult.score) {
+      bestResult = { score: currentScore, ev: ev, ceiling: ceiling, coverage: coverage, team: currentTimelineData };
     }
   }
   return bestResult;
 }
 
 function recommendTriggerBuffRanking(bestTeamData, songDuration) {
-  const baseEV = calculateExpectedScore(bestTeamData, songDuration, {});
+  const baseEV = calculateExpectedScore(bestTeamData, songDuration, {}, false);
   const recommendations = [];
 
   bestTeamData.forEach(char => {
     const testBuffs = {};
     testBuffs[char.id] = 0.01; 
-    
-    const boostedEV = calculateExpectedScore(bestTeamData, songDuration, testBuffs);
+    const boostedEV = calculateExpectedScore(bestTeamData, songDuration, testBuffs, false);
     const increase = boostedEV - baseEV; 
-
     recommendations.push({ name: char.name, increase: increase });
   });
 
@@ -453,6 +421,8 @@ if(calculateBtn) {
     calculateBtn.addEventListener('click', () => {
       const songDuration = Number(document.getElementById('songDuration').value);
       const talentPoints = Number(document.getElementById('talentPoints').value);
+      // 讀取優化目標
+      const optimizeGoal = document.getElementById('optimizeGoal') ? document.getElementById('optimizeGoal').value : 'ev';
       
       if (selectedIds.size !== 5) {
         alert(`Please select exactly 5 members for your team. You have selected ${selectedIds.size}.`);
@@ -461,21 +431,19 @@ if(calculateBtn) {
 
       const selectedMembers = allCharactersData.filter(char => selectedIds.has(char.id));
 
-      calculateBtn.innerText = "Calculating EV, please wait...";
+      calculateBtn.innerText = "Calculating Optimal Strategy...";
       
       setTimeout(() => {
-        const bestTeam = findBestEVTeam(selectedMembers, talentPoints, songDuration);
-        const utilizedPoints = bestTeam.team.reduce((sum, char) => sum + char.investedPoints, 0);
-        const topRecommendations = recommendTriggerBuffRanking(bestTeam.team, songDuration);
+        // 使用新的萬能計算核心
+        const bestTeamResult = findBestTeamByGoal(selectedMembers, talentPoints, songDuration, optimizeGoal);
+        const bestTeam = bestTeamResult.team;
+        
+        const utilizedPoints = bestTeam.reduce((sum, char) => sum + char.investedPoints, 0);
+        const topRecommendations = recommendTriggerBuffRanking(bestTeam, songDuration);
+        const summarySegments = getCoverageSegments(bestTeam);
+        const coveragePercent = ((bestTeamResult.coverage / songDuration) * 100).toFixed(2);
 
-        const summarySegments = getCoverageSegments(bestTeam.team);
-        let totalCoverageTime = 0;
-        summarySegments.forEach(seg => {
-          totalCoverageTime += (seg.end - seg.start);
-        });
-        const coveragePercent = ((totalCoverageTime / songDuration) * 100).toFixed(2);
-
-        let rankingHtml = `<div style="margin-top: 10px;"><strong>📈 Priority Trigger Buff Ranking:</strong><br>`;
+        let rankingHtml = `<div style="margin-top: 10px;"><strong>📈 Priority Trigger Buff Ranking (Based on EV):</strong><br>`;
         topRecommendations.forEach((rec, index) => {
           rankingHtml += `<div style="margin-top: 4px;">
             <span style="display: inline-block; width: 25px; color: #aaa;">#${index + 1}</span> 
@@ -485,10 +453,18 @@ if(calculateBtn) {
         });
         rankingHtml += `</div>`;
 
+        let modeDisplay = "";
+        if (optimizeGoal === 'ev') modeDisplay = "Highest Expected Value (EV)";
+        else if (optimizeGoal === 'ceiling') modeDisplay = "Theoretical Max Ceiling (100% Rate)";
+        else modeDisplay = "Maximum Skill Coverage";
+
+        // 面板同時展示 EV、Ceiling 和 Coverage
         document.getElementById('summary-container').innerHTML = `
+          <div style="font-size: 0.9em; color: #aaa; margin-bottom: 8px;">Goal: <span style="color: #fff;">${modeDisplay}</span></div>
           Duration: ${songDuration}s | CD Points Used: ${utilizedPoints} / ${talentPoints}<br>
-          Total Expected Score (EV): <span style="font-size: 1.2em;">${bestTeam.expectedScore.toFixed(0)} pts</span><br>
-          Total Skill Coverage: <span style="color: var(--accent-color); font-weight: bold;">${totalCoverageTime.toFixed(1)}s</span> <span style="font-size: 0.85em; color: #aaa;">(${coveragePercent}%)</span><br>
+          Average Expected Score (EV): <span style="font-size: 1.1em; color: #87cefa;">${bestTeamResult.ev.toFixed(0)} pts</span><br>
+          Theoretical Ceiling Score: <span style="font-size: 1.1em; color: #ffb6c1;">${bestTeamResult.ceiling.toFixed(0)} pts</span><br>
+          Total Skill Coverage: <span style="color: var(--accent-color); font-weight: bold;">${bestTeamResult.coverage.toFixed(1)}s</span> <span style="font-size: 0.85em; color: #aaa;">(${coveragePercent}%)</span><br>
           <hr style="border-top: 1px dashed var(--accent-color); margin: 10px 0; opacity: 0.5;" />
           ${rankingHtml}
         `;
@@ -496,17 +472,13 @@ if(calculateBtn) {
         const timelineWrapper = document.getElementById('timeline-wrapper');
         timelineWrapper.innerHTML = '';
 
-        // 1. 先繪製每個角色的獨立軌道
-        bestTeam.team.forEach(char => {
+        bestTeam.forEach(char => {
           const row = document.createElement('div');
           row.className = 'track-row';
-          
           const talentHTML = char.investedPoints > 0 ? `<div style="margin-top: 6px;"><span class="talent-badge">+${char.investedPoints * 4}% CD</span></div>` : '';
-          
           const infoDiv = document.createElement('div');
           infoDiv.className = 'track-char-info';
           infoDiv.innerHTML = `${char.name}${talentHTML}`;
-
           const trackDiv = document.createElement('div');
           trackDiv.className = 'track';
 
@@ -521,21 +493,18 @@ if(calculateBtn) {
             bar.title = `Activate: ${start.toFixed(1)}s`;
             trackDiv.appendChild(bar);
           });
-
           row.appendChild(infoDiv);
           row.appendChild(trackDiv);
           timelineWrapper.appendChild(row);
         });
 
-        // 2. 將「總結算軌道」放在成員列表的正下方
+        // 總結算軌道在最下方
         const summaryRow = document.createElement('div');
         summaryRow.className = 'track-row';
         summaryRow.style.marginTop = '25px'; 
-        
         const summaryInfoDiv = document.createElement('div');
         summaryInfoDiv.className = 'track-char-info';
         summaryInfoDiv.innerHTML = `<span style="color: var(--accent-color); font-size: 1rem; font-weight: 800;">🌟 Overall Coverage</span>`;
-
         const summaryTrackDiv = document.createElement('div');
         summaryTrackDiv.className = 'track';
         summaryTrackDiv.style.border = '1px solid rgba(74, 222, 128, 0.4)'; 
@@ -554,7 +523,6 @@ if(calculateBtn) {
         summaryRow.appendChild(summaryTrackDiv);
         timelineWrapper.appendChild(summaryRow);
 
-        // 3. 繪製時間軸
         const axis = document.createElement('div');
         axis.className = 'axis';
         for (let i = 0; i <= songDuration; i += (songDuration >= 200 ? 30 : 15)) {
@@ -567,7 +535,7 @@ if(calculateBtn) {
         timelineWrapper.appendChild(axis);
 
         resultSection.style.display = 'block';
-        calculateBtn.innerText = "Calculate Best EV Team 🚀";
+        calculateBtn.innerText = "Calculate Best Team 🚀";
       }, 50); 
     });
 }
