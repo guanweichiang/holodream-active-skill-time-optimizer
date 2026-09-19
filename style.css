@@ -187,3 +187,55 @@ button:hover { opacity: 0.8; }
   content: ''; position: absolute; top: -10px; left: 50%;
   width: 2px; height: 6px; background-color: var(--axis-color);
 }
+
+/* ===== Bloom 1 切換 ===== */
+.bloom-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #bbb;
+  cursor: pointer;
+  padding: 3px 8px;
+  border: 1px solid #555;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.bloom-toggle:hover { border-color: #ffb6c1; }
+
+.bloom-toggle input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+  accent-color: #ff8fb1;
+}
+
+.bloom-toggle:has(input:checked) {
+  color: #ffb6c1;
+  border-color: #ff8fb1;
+  background-color: rgba(255, 143, 177, 0.12);
+}
+
+.bloom-toggle:has(input:disabled) {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bloom-toggle:has(input:disabled) input { cursor: not-allowed; }
+
+/* 勾選 Bloom 1 時，被替換的數值以粉紅色標示 */
+.character-card.bloom-on .stat-val {
+  color: #ff8fb1;
+  font-weight: bold;
+}
+
+/* 結果時間軸上的 Bloom 標籤 */
+.bloom-badge {
+  font-size: 0.7rem;
+  background-color: #ff8fb1;
+  color: #5a1230;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-weight: 800;
+}

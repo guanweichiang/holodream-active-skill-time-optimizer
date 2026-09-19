@@ -61,6 +61,7 @@ const characterColors = {
 let allCharactersData = [];
 const characterLimits = new Map();
 const selectedIds = new Set(); 
+const bloomIds = new Set(); // 【新增】：勾選為 Bloom 1 的角色 id
 const timelineColors = ["#ffb6c1", "#ff7f50", "#87cefa", "#98fb98", "#ffffb3"];
 
 const accordionContainer = document.getElementById('accordionContainer');
@@ -69,8 +70,51 @@ const resultSection = document.getElementById('resultSection');
 const selectedCountDisplay = document.getElementById('selectedCountDisplay');
 const clearCharactersBtn = document.getElementById('clearCharactersBtn');
 
+// 【新增】：安全轉數字（空值 / null / 非數字 → null；支援 "105%" 格式）
+function parseNum(v) {
+  if (v === null || v === undefined) return null;
+  const n = parseFloat(String(v).replace('%', '').trim());
+  return isNaN(n) ? null : n;
+}
+
+// 【新增】：取得角色「目前實際生效」的 Score 與 Duration
+// - 未勾選 Bloom 1：使用原本的 score_bonus / AP duration
+// - 已勾選 Bloom 1：使用 bloom1_score_bonus / bloom1_AP_duration；
+//   若該欄位是空的，就退回使用原本的數值
+function getEffectiveStats(char) {
+  const bloomOn = bloomIds.has(char.id);
+  return {
+    bloom: bloomOn,
+    score: (bloomOn && char.bloom_score !== null) ? char.bloom_score : char.score_bonus,
+    duration: (bloomOn && char.bloom_dur !== null) ? char.bloom_dur : char['AP duration']
+  };
+}
+
+function buildStatsHtml(char, st) {
+  return `⏱️ CD: ${char['AP cooldown']}s | ⏳ Dur: <span class="stat-val">${st.duration}s</span>`;
+}
+
+function buildBonusHtml(char, st) {
+  return `💥 Score: <span class="stat-val">${st.score}%</span> | Rate: ${char.display_rate}`;
+}
+
+// 【新增】：同一角色可能出現在多個團體分頁，所以要同步更新所有卡片
+function refreshCardStats(charId) {
+  const char = allCharactersData.find(c => c.id === charId);
+  if (!char) return;
+  const st = getEffectiveStats(char);
+  document.querySelectorAll(`.character-card[data-char-id="${charId}"]`).forEach(card => {
+    card.classList.toggle('bloom-on', st.bloom);
+    card.querySelector('.char-stats').innerHTML = buildStatsHtml(char, st);
+    card.querySelector('.char-bonus').innerHTML = buildBonusHtml(char, st);
+    const bloomCb = card.querySelector('.bloom-checkbox');
+    if (bloomCb) bloomCb.checked = st.bloom;
+  });
+}
+
 window.addEventListener('DOMContentLoaded', () => {
-  fetch('character.csv') 
+  fetch('character.csv', { cache: 'no-store' }) // 避免瀏覽器快取到舊版 CSV
+   
     .then(response => {
       if (!response.ok) throw new Error("Failed to load character.csv");
       return response.text();
@@ -80,7 +124,17 @@ window.addEventListener('DOMContentLoaded', () => {
         header: true,
         dynamicTyping: true,
         skipEmptyLines: true,
+        transformHeader: h => h.trim(),
         complete: function(results) {
+          if (results.meta.fields && !results.meta.fields.includes('bloom1_score_bonus') && !results.meta.fields.includes('bloom1_AP_duration')) {
+            console.warn("character.csv 找不到 bloom1_score_bonus / bloom1_AP_duration 欄位，Bloom 1 功能將無資料可用。");
+            const warn = document.createElement('div');
+            warn.id = 'bloomWarning';
+            warn.style.cssText = 'margin-bottom: 15px; padding: 12px 15px; border-left: 4px solid #ff7f50; background: rgba(255,127,80,0.12); border-radius: 4px; font-size: 0.9rem;';
+            warn.innerHTML = '⚠️ 目前讀到的 character.csv 沒有 <b>bloom1_score_bonus</b> / <b>bloom1_AP_duration</b> 欄位，所以 Bloom 1 勾選鈕被停用。'
+              + '請確認 CSV 已更新並放在與 index.html 相同的資料夾，然後按 Ctrl+F5 強制重新整理。';
+            accordionContainer.parentNode.insertBefore(warn, accordionContainer);
+          }
           allCharactersData = results.data.filter(char => char.character && char['AP cooldown'] && char.Rarity === 5);
           allCharactersData.forEach(char => {
             const rawRate = char.base_trigger_rate ? String(char.base_trigger_rate).trim() : 'Medium';
@@ -95,6 +149,11 @@ window.addEventListener('DOMContentLoaded', () => {
             let rawScore = char.score_bonus;
             let parsedScore = parseFloat(String(rawScore).replace('%', '').trim());
             char.score_bonus = isNaN(parsedScore) ? 100 : parsedScore;
+
+            // 【新增】：Bloom 1 資料（空值 = null，計算時會退回原本的數值）
+            char.bloom_score = parseNum(char.bloom1_score_bonus);
+            char.bloom_dur = parseNum(char.bloom1_AP_duration);
+            char.has_bloom_data = char.bloom_score !== null || char.bloom_dur !== null;
           });
           if (accordionContainer) renderAccordionList(allCharactersData);
         }
@@ -105,7 +164,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
 clearCharactersBtn.addEventListener('click', () => {
   selectedIds.clear();
-  document.querySelectorAll('.character-card input[type="checkbox"]').forEach(cb => cb.checked = false);
+  // 只取消「選取角色」的勾選（卡片直接子層的 checkbox），不影響 Bloom 1 勾選狀態
+  document.querySelectorAll('.character-card > input[type="checkbox"]').forEach(cb => cb.checked = false);
   selectedCountDisplay.innerText = '0';
 });
 
@@ -166,6 +226,9 @@ function renderAccordionList(characters) {
     grouped[groupName].forEach(char => {
       const card = document.createElement('div');
       card.className = 'character-card';
+      card.dataset.charId = char.id;
+      const stats = getEffectiveStats(char);
+      if (stats.bloom) card.classList.add('bloom-on');
       
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
@@ -197,8 +260,15 @@ function renderAccordionList(characters) {
       infoDiv.innerHTML = `
         <span class="char-name">${char.character}</span>
         <span class="char-outfit">${char.outfit}</span>
-        <span class="char-stats">⏱️ CD: ${char['AP cooldown']}s | ⏳ Dur: ${char['AP duration']}s</span>
-        <span class="char-bonus">💥 Score: ${char.score_bonus}% | Rate: ${char.display_rate}</span>
+        <span class="char-stats">${buildStatsHtml(char, stats)}</span>
+        <span class="char-bonus">${buildBonusHtml(char, stats)}</span>
+
+        <div style="margin-top: 8px;" class="no-trigger">
+          <label class="bloom-toggle no-trigger" title="${char.has_bloom_data ? 'Use Bloom 1 stats' : 'No Bloom 1 data for this character'}">
+            <input type="checkbox" class="bloom-checkbox no-trigger" ${stats.bloom ? 'checked' : ''} ${char.has_bloom_data ? '' : 'disabled'}>
+            <span class="no-trigger">🌸 Bloom 1</span>
+          </label>
+        </div>
         
         <div style="margin-top: 8px; font-size: 0.8rem; color: #bbb;" class="no-trigger">
           Max CD Points: 
@@ -215,9 +285,16 @@ function renderAccordionList(characters) {
       card.appendChild(infoDiv);
 
       card.addEventListener('click', (e) => {
-        if (e.target.classList.contains('no-trigger') || e.target.tagName === 'OPTION') return;
+        if (e.target.closest('.no-trigger') || e.target.tagName === 'OPTION') return;
         checkbox.checked = !checkbox.checked;
         checkbox.dispatchEvent(new Event('change')); 
+      });
+
+      // 【新增】：Bloom 1 勾選 / 取消
+      card.querySelector('.bloom-checkbox').addEventListener('change', (e) => {
+        if (e.target.checked) bloomIds.add(char.id);
+        else bloomIds.delete(char.id);
+        refreshCardStats(char.id);
       });
 
       card.querySelector('.char-limit-select').addEventListener('change', (e) => {
@@ -355,12 +432,16 @@ function findBestTeamByGoal(memberPool, maxTalentPoints, songDuration, optimizeG
   const usableTalents = Math.min(maxTalentPoints, 15);
   const talentDistributions = getTalentDistributions(usableTalents, memberPool);
 
+  // 【新增】：依照 Bloom 1 勾選狀態，事先算好每位成員實際使用的 Score / Duration
+  const memberStats = memberPool.map(char => getEffectiveStats(char));
+
   for (const distribution of talentDistributions) {
     let currentTimelineData = [];
     
     memberPool.forEach((char, index) => {
       const investedPoints = distribution[index];
-      const intervals = getCharacterIntervals(char['AP cooldown'], char['AP duration'], investedPoints, songDuration);
+      const st = memberStats[index];
+      const intervals = getCharacterIntervals(char['AP cooldown'], st.duration, investedPoints, songDuration);
       
       const customColor = characterColors[char.character];
       const assignedColor = (customColor && customColor.trim() !== "") ? customColor : timelineColors[index % timelineColors.length];
@@ -371,7 +452,9 @@ function findBestTeamByGoal(memberPool, maxTalentPoints, songDuration, optimizeG
         color: assignedColor,
         investedPoints: investedPoints,
         intervals: intervals,
-        score_bonus: char.score_bonus,
+        score_bonus: st.score,
+        duration: st.duration,
+        bloom1: st.bloom,
         parsed_rate: char.parsed_rate
       });
     });
@@ -475,7 +558,10 @@ if(calculateBtn) {
         bestTeam.forEach(char => {
           const row = document.createElement('div');
           row.className = 'track-row';
-          const talentHTML = char.investedPoints > 0 ? `<div style="margin-top: 6px;"><span class="talent-badge">+${char.investedPoints * 4}% CD</span></div>` : '';
+          const badges = [];
+          if (char.bloom1) badges.push(`<span class="bloom-badge" title="Score ${char.score_bonus}% | Dur ${char.duration}s">🌸 Bloom 1</span>`);
+          if (char.investedPoints > 0) badges.push(`<span class="talent-badge">+${char.investedPoints * 4}% CD</span>`);
+          const talentHTML = badges.length ? `<div style="margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap;">${badges.join('')}</div>` : '';
           const infoDiv = document.createElement('div');
           infoDiv.className = 'track-char-info';
           infoDiv.innerHTML = `${char.name}${talentHTML}`;
